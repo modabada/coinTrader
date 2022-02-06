@@ -9,14 +9,13 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace coinTrader {
-    public partial class Form1: Form {
-        public Form1() {
+    public partial class Main: Form {
+        public Main() {
+            FormBorderStyle = FormBorderStyle.Fixed3D;
             InitializeComponent();
         }
         private void btn1(object sender, EventArgs e) {
-            label1.Text = "test suc";
             Console.WriteLine("true");
-            btnClickThis.Text = "test suc2";
         }
 
         private void btnClickThis_MouseClick(object sender, MouseEventArgs e) {
