@@ -41,6 +41,7 @@ namespace coinTrader {
             this.background = new System.Windows.Forms.Panel();
             this.Pause = new System.Windows.Forms.Button();
             this.Start = new System.Windows.Forms.Button();
+            this.SampleOutput = new System.Windows.Forms.TextBox();
             this.background.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -48,6 +49,7 @@ namespace coinTrader {
             // 
             this.background.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(26)))), ((int)(((byte)(26)))), ((int)(((byte)(26)))));
             this.background.BackgroundImageLayout = System.Windows.Forms.ImageLayout.None;
+            this.background.Controls.Add(this.SampleOutput);
             this.background.Controls.Add(this.Pause);
             this.background.Controls.Add(this.Start);
             this.background.ForeColor = System.Drawing.Color.Black;
@@ -100,6 +102,14 @@ namespace coinTrader {
             this.Start.UseVisualStyleBackColor = false;
             this.Start.Click += new System.EventHandler(this.Start_Click);
             // 
+            // SampleOutput
+            // 
+            this.SampleOutput.Location = new System.Drawing.Point(172, 46);
+            this.SampleOutput.Multiline = true;
+            this.SampleOutput.Name = "SampleOutput";
+            this.SampleOutput.Size = new System.Drawing.Size(363, 186);
+            this.SampleOutput.TabIndex = 2;
+            // 
             // Main
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 12F);
@@ -110,6 +120,7 @@ namespace coinTrader {
             this.Name = "Main";
             this.Text = "Form1";
             this.background.ResumeLayout(false);
+            this.background.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -119,6 +130,7 @@ namespace coinTrader {
         private System.Windows.Forms.Panel background;
         private Button Start;
         private Button Pause;
+        private TextBox SampleOutput;
     }
 }
 
