@@ -6,6 +6,7 @@ using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Net.Http;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -13,6 +14,7 @@ using System.Threading;
 using System.Windows.Forms;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Net.Http.Headers;
 
 namespace coinTrader {
 
@@ -22,7 +24,7 @@ namespace coinTrader {
             InitializeComponent();
             Thread trader = new Thread(new ThreadStart(TradingInfo.Trading));
         }
-        private async void Start_Click(object sender, EventArgs e) {
+        private void Start_Click(object sender, EventArgs e) {
             JObject key = JObject.Parse(File.ReadAllText("/Users/inwoo/Desktop/Coding/coinTrader/Key.json"));
             try {
                 // 메소드 선언
@@ -62,31 +64,62 @@ namespace coinTrader {
 
 
                 string page = "https://api.bithumb.com";
-                string sEndPoint = "/info/account";
+                string sEndPoint = "/info/balance";
 
-                string sParams = "order_currency=BTC&payment_currency=KRW";
+
+                string sParams = "currency=ALL";
                 // string sParams = "currency=ALL";
-                string sPostData = sParams + "&endpoint=" + Uri.EscapeDataString(sEndPoint);
-
+                string sPostData = sParams;
+                sPostData += "&endpoint=" + Uri.EscapeDataString(sEndPoint);
                 long nNonce = MicroSecTime();
 
-
-                HttpClient client = new HttpClient();
-                string sHMAC_Key = (string)( key.GetValue("Secret Key"));
+                string sHMAC_Key = (string) key.GetValue("Secret Key");
                 string sHMAC_Data = sEndPoint + (char) 0 + sPostData + (char) 0 + nNonce.ToString();
                 string sResult = Hash_HMAC(sHMAC_Key, sHMAC_Data);
-                string Api_sign = Convert.ToBase64String(StringToByte(sResult));
+                string sAPI_Sign = Convert.ToBase64String(StringToByte(sResult));
 
+                // HttpWebRequest 방식으로 private, 안쓰고싶음
+                HttpWebRequest request = (HttpWebRequest) WebRequest.Create(page + sEndPoint);
+                byte[] rgbyData = Encoding.ASCII.GetBytes(sPostData);
+                request.Method = "POST";
+                request.ContentType = "application/x-www-form-urlencoded";
+                request.ContentLength = rgbyData.Length;
+
+                request.Headers.Add("Api-Key", (string)key.GetValue("Connect Key"));
+                request.Headers.Add("Api-Sign", sAPI_Sign);
+                request.Headers.Add("Api-Nonce", nNonce.ToString());
+
+                using(var stream = request.GetRequestStream()) {
+                    stream.Write(rgbyData, 0, rgbyData.Length);
+                }
+
+                var Response = (HttpWebResponse) request.GetResponse();
+
+                string body = new StreamReader(Response.GetResponseStream()).ReadToEnd();
+                this.SampleOutput.Text = body;
+
+                // HttpClient 방식으로 private, (Auth data 문제)
+                /*
+                HttpClient client = new HttpClient();
+                client.BaseAddress = new Uri(page);
+                client.DefaultRequestHeaders.Clear();
+                ProductHeaderValue header = new ProductHeaderValue("MyAwesomeLibrary", System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString());
+                // ProductInfoHeaderValue userAgent = new ProductInfoHeaderValue(header);
+                // client.DefaultRequestHeaders.UserAgent.Add(userAgent);
+                // client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.87 Safari/537.36");
                 Dictionary<string, string> values = new Dictionary<string, string> {
-                    {"Api-Key", (string)key.GetValue("Connect Key") },
-                    {"Api-Sign", Api_sign},
-                    {"currency", nNonce.ToString() }
+                    {"Api-Key", (string) key.GetValue("Connect Key") },
+                    {"Api-Sign", sAPI_Sign},
+                    {"Api-Nonce", nNonce.ToString() }
                 };
                 FormUrlEncodedContent data = new FormUrlEncodedContent(values);
-                HttpResponseMessage response = await client.PostAsync(page, data);
+                HttpResponseMessage response = await client.PostAsync(sEndPoint, data);
                 // response.EnsureSuccessStatusCode();
-
+                Console.WriteLine(key.GetValue("Connect Key"));
+                Console.WriteLine(key.GetValue("Secret Key"));
+                Console.WriteLine(response.StatusCode);
                 SampleOutput.Text = await response.Content.ReadAsStringAsync();
+                */
 
 
 
@@ -103,8 +136,16 @@ namespace coinTrader {
 
                 //   HttpClient client = new HttpClient();
             }
-            catch(Exception ex) {
-                Console.WriteLine(ex.ToString());
+            catch(WebException webEx) {
+                using(HttpWebResponse Response = (HttpWebResponse) webEx.Response) {
+                    // nCode = Response.StatusCode;
+
+                    using(StreamReader reader = new StreamReader(Response.GetResponseStream())) {
+                        string body = reader.ReadToEnd();
+
+                        SampleOutput.Text = "ERR\n" + body;
+                    }
+                }
             }
 
         }
