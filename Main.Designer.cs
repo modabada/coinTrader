@@ -7,6 +7,7 @@ namespace coinTrader {
 
         /// 사용 중인 모든 리소스를 정리합니다.
         /// <param name="disposing">관리되는 리소스를 삭제해야 하면 true이고, 그렇지 않으면 false입니다.</param>
+
         protected override void Dispose(bool disposing) {
             trad_Thread.Abort();
             if(disposing && (components != null)) {
@@ -40,9 +41,9 @@ namespace coinTrader {
         private void InitializeComponent() {
             this.backgroundWorker1 = new System.ComponentModel.BackgroundWorker();
             this.background = new System.Windows.Forms.Panel();
+            this.SampleOutput = new System.Windows.Forms.TextBox();
             this.Pause = new System.Windows.Forms.Button();
             this.Start = new System.Windows.Forms.Button();
-            this.SampleOutput = new System.Windows.Forms.TextBox();
             this.background.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -60,6 +61,16 @@ namespace coinTrader {
             this.background.Padding = new System.Windows.Forms.Padding(3);
             this.background.Size = new System.Drawing.Size(784, 462);
             this.background.TabIndex = 2;
+            // 
+            // SampleOutput
+            // 
+            this.SampleOutput.Location = new System.Drawing.Point(172, 46);
+            this.SampleOutput.Multiline = true;
+            this.SampleOutput.Name = "SampleOutput";
+            this.SampleOutput.ReadOnly = true;
+            this.SampleOutput.Size = new System.Drawing.Size(363, 186);
+            this.SampleOutput.TabIndex = 2;
+            this.SampleOutput.TabStop = false;
             // 
             // Pause
             // 
@@ -102,14 +113,6 @@ namespace coinTrader {
             this.Start.Text = "Start";
             this.Start.UseVisualStyleBackColor = false;
             this.Start.Click += new System.EventHandler(this.Start_Click);
-            // 
-            // SampleOutput
-            // 
-            this.SampleOutput.Location = new System.Drawing.Point(172, 46);
-            this.SampleOutput.Multiline = true;
-            this.SampleOutput.Name = "SampleOutput";
-            this.SampleOutput.Size = new System.Drawing.Size(363, 186);
-            this.SampleOutput.TabIndex = 2;
             // 
             // Main
             // 
