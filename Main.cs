@@ -19,139 +19,96 @@ using System.Net.Http.Headers;
 namespace coinTrader {
 
     public partial class Main: Form {
+        public Thread trad_Thread;
         public Main() {
             FormBorderStyle = FormBorderStyle.Fixed3D;
             InitializeComponent();
-            Thread trader = new Thread(new ThreadStart(new TradingInfo().Trading));
+            trad_Thread = new Thread(new ThreadStart(Trading));
+            trad_Thread.Start();
         }
-        private async void Start_Click(object sender, EventArgs e) {
-            JObject key = JObject.Parse(File.ReadAllText("/Users/inwoo/Desktop/Coding/coinTrader/Key.json"));
-            try {
-                // 메소드 선언
-                string ByteToString(byte[] rgbyBuff) {
-                    string sHexStr = "";
-                    for(int nCnt = 0; nCnt < rgbyBuff.Length; nCnt++) {
-                        sHexStr += rgbyBuff[nCnt].ToString("x2"); // Hex format
-                    }
-                    return (sHexStr);
-                }
-                byte[] StringToByte(string sStr) {
-                    byte[] rgbyBuff = Encoding.UTF8.GetBytes(sStr);
-                    return (rgbyBuff);
-                }
-                long MicroSecTime() {
-                    long nEpochTicks = 0;
-                    long nUnixTimeStamp = 0;
-                    long nNowTicks = 0;
-                    long nowMiliseconds = 0;
-                    string sNonce = "";
-                    DateTime DateTimeNow;
-                    nEpochTicks = new DateTime(1970, 1, 1).Ticks;
-                    DateTimeNow = DateTime.UtcNow;
-                    nNowTicks = DateTimeNow.Ticks;
-                    nowMiliseconds = DateTimeNow.Millisecond;
-                    nUnixTimeStamp = ((nNowTicks - nEpochTicks) / TimeSpan.TicksPerSecond);
-                    sNonce = nUnixTimeStamp.ToString() + nowMiliseconds.ToString("D03");
-                    return (Convert.ToInt64(sNonce));
-                }
-                string Hash_HMAC(string sKey, string sData) {
-                    byte[] rgbyKey = Encoding.UTF8.GetBytes(sKey);
-                    using(var hmacsha512 = new HMACSHA512(rgbyKey)) {
-                        hmacsha512.ComputeHash(Encoding.UTF8.GetBytes(sData));
-                        return (ByteToString(hmacsha512.Hash));
-                    }
-                }
-
-
-                string page = "https://api.bithumb.com";
-                string sEndPoint = "/info/balance";
-
-
-                string sParams = "currency=REN";
-                string sPostData = sParams;
-                sPostData += "&endpoint=" + Uri.EscapeDataString(sEndPoint);
-                long nNonce = MicroSecTime();
-
-                string sHMAC_Key = (string) key.GetValue("Secret Key");
-                string sHMAC_Data = sEndPoint + (char) 0 + sPostData + (char) 0 + nNonce.ToString();
-                string sResult = Hash_HMAC(sHMAC_Key, sHMAC_Data);
-                string sAPI_Sign = Convert.ToBase64String(StringToByte(sResult));
-                byte[] rgbyData = Encoding.ASCII.GetBytes(sPostData);
-                
-                HttpClient client = new HttpClient(new HttpClientHandler() { UseDefaultCredentials = true });
-                client.BaseAddress = new Uri(page);
-                client.DefaultRequestHeaders.Add("Api-Key", (string) key.GetValue("Connect Key"));
-                client.DefaultRequestHeaders.Add("Api-Sign", sAPI_Sign);
-                client.DefaultRequestHeaders.Add("Api-Nonce", nNonce.ToString());
-
-                HttpResponseMessage response = await client.PostAsync(sEndPoint, new StringContent(sPostData, Encoding.UTF8, "application/x-www-form-urlencoded"));
-                response.EnsureSuccessStatusCode();
-                SampleOutput.Text = await response.Content.ReadAsStringAsync();
-
-                // public
-                /*
-                string page = "https://api.bithumb.com/public/ticker/BTC";
-                HttpClient client = new HttpClient();
-                HttpResponseMessage response = await client.GetAsync(page);
-                response.EnsureSuccessStatusCode();
-                string responseBody = await response.Content.ReadAsStringAsync();
-                SampleOutput.Text = responseBody;
-                */
-            }
-            catch(WebException webEx) {
-                using(HttpWebResponse Response = (HttpWebResponse) webEx.Response) {
-                    // nCode = Response.StatusCode;
-
-                    using(StreamReader reader = new StreamReader(Response.GetResponseStream())) {
-                        string body = reader.ReadToEnd();
-
-                        SampleOutput.Text = "ERR\n" + body;
-                    }
-                }
-            }
-
+        private void Start_Click(object sender, EventArgs e) {
+            // SampleOutput.Text = new Trade().Trading();
+            // public
+            /*
+            string page = "https://api.bithumb.com/public/ticker/BTC";
+            HttpClient client = new HttpClient();
+            HttpResponseMessage response = await client.GetAsync(page);
+            response.EnsureSuccessStatusCode();
+            string responseBody = await response.Content.ReadAsStringAsync();
+            SampleOutput.Text = responseBody;
+            */
         }
-
         private void Pause_Click(object sender, EventArgs e) {
 
         }
-    }
-    public class TradingInfo {
-        public bool? state = false;
-        public void Trading() {
+
+        #region Trade
+        /// <summary>
+        /// Bithumb API 통신 모음
+        /// </summary>
+        private bool state = true;
+        private static readonly JObject key = JObject.Parse(File.ReadAllText("/Users/inwoo/Desktop/Coding/coinTrader/Key.json"));
+        private readonly string ConnectionKey = (string) key.GetValue("Connection Key");
+        private readonly string SecretKey = (string) key.GetValue("Secret Key");
+        private HttpClient client = new HttpClient {
+            BaseAddress = new Uri("https://api.bithumb.com")
+        };
+        private void Trading() {
+            while(state) {
+                DateTime time = DateTime.Now;
+                if(time.Hour == 9) {
+
+                }
+                // SampleOutput.Text = Sec_Connection("/info/balance", "currency=REN").ToString();
+                SampleOutput.Text = Pub_Connection("public/ticker/REN_KRW").ToString();
+                Thread.Sleep(1000);
+            }
+        }
+
+        private JObject Pub_Connection(string path) {
+            /// ex) Pub_Connection("public/ticker/REN_KRW")
+            return JObject.Parse(client.GetStringAsync(path).Result);
+        }
+        private JObject Sec_Connection(string End, string Params) {
+            /// ex) Sec_Connection("/info/balance", "currency=REN");
+            Params += "&endpoint=" + Uri.EscapeDataString(End);
+            long Nonce = MicroSecTime();
+            string HMAC_Data = End + (char) 0 + Params + (char) 0 + Nonce.ToString();
+            string Result = Hash_HMAC(SecretKey, HMAC_Data);
+            string API_Sign = Convert.ToBase64String(Encoding.UTF8.GetBytes(Result));
+            client.DefaultRequestHeaders.Clear();
+            client.DefaultRequestHeaders.Add("Api-Key", ConnectionKey);
+            client.DefaultRequestHeaders.Add("Api-Sign", API_Sign);
+            client.DefaultRequestHeaders.Add("Api-Nonce", Nonce.ToString());
+
+            HttpResponseMessage Response = client.PostAsync(End, new StringContent(Params, Encoding.UTF8, "application/x-www-form-urlencoded")).Result;
+            Response.EnsureSuccessStatusCode();
+            return JObject.Parse(Response.Content.ReadAsStringAsync().Result);
         }
         private string ByteToString(byte[] rgbyBuff) {
-            string sHexStr = "";
-            for(int nCnt = 0; nCnt < rgbyBuff.Length; nCnt++) {
-                sHexStr += rgbyBuff[nCnt].ToString("x2"); // Hex format
+            StringBuilder sb = new StringBuilder();
+            foreach(byte b in rgbyBuff) {
+                sb.Append(b.ToString("x2"));
             }
-            return (sHexStr);
-        }
-        private byte[] StringToByte(string sStr) {
-            byte[] rgbyBuff = Encoding.UTF8.GetBytes(sStr);
-            return (rgbyBuff);
+            return sb.ToString();
         }
         private long MicroSecTime() {
-            long nEpochTicks = 0;
-            long nUnixTimeStamp = 0;
-            long nNowTicks = 0;
-            long nowMiliseconds = 0;
-            string sNonce = "";
-            DateTime DateTimeNow;
-            nEpochTicks = new DateTime(1970, 1, 1).Ticks;
-            DateTimeNow = DateTime.UtcNow;
-            nNowTicks = DateTimeNow.Ticks;
-            nowMiliseconds = DateTimeNow.Millisecond;
-            nUnixTimeStamp = ((nNowTicks - nEpochTicks) / TimeSpan.TicksPerSecond);
-            sNonce = nUnixTimeStamp.ToString() + nowMiliseconds.ToString("D03");
+            DateTime DateTimeNow = DateTime.UtcNow;
+            long nEpochTicks = new DateTime(1970, 1, 1).Ticks;
+            long nNowTicks = DateTimeNow.Ticks;
+            long nowMiliseconds = DateTimeNow.Millisecond;
+            long nUnixTimeStamp = (nNowTicks - nEpochTicks) / TimeSpan.TicksPerSecond;
+            string sNonce = nUnixTimeStamp.ToString() + nowMiliseconds.ToString("D03");
             return (Convert.ToInt64(sNonce));
         }
         private string Hash_HMAC(string sKey, string sData) {
+            ByteToString(new HMACSHA512(Encoding.UTF8.GetBytes(sKey)).ComputeHash(Encoding.UTF8.GetBytes(sData)));
             byte[] rgbyKey = Encoding.UTF8.GetBytes(sKey);
             using(var hmacsha512 = new HMACSHA512(rgbyKey)) {
                 hmacsha512.ComputeHash(Encoding.UTF8.GetBytes(sData));
                 return (ByteToString(hmacsha512.Hash));
             }
         }
+        #endregion
     }
 }
