@@ -24,19 +24,10 @@ namespace coinTrader {
             FormBorderStyle = FormBorderStyle.Fixed3D;
             InitializeComponent();
             trad_Thread = new Thread(new ThreadStart(Trading));
-            trad_Thread.Start();
+            // trad_Thread.Start();
+            
         }
         private void Start_Click(object sender, EventArgs e) {
-            // SampleOutput.Text = new Trade().Trading();
-            // public
-            /*
-            string page = "https://api.bithumb.com/public/ticker/BTC";
-            HttpClient client = new HttpClient();
-            HttpResponseMessage response = await client.GetAsync(page);
-            response.EnsureSuccessStatusCode();
-            string responseBody = await response.Content.ReadAsStringAsync();
-            SampleOutput.Text = responseBody;
-            */
         }
         private void Pause_Click(object sender, EventArgs e) {
 
@@ -47,22 +38,47 @@ namespace coinTrader {
         /// Bithumb API 통신 모음
         /// </summary>
         private bool state = true;
-        private static readonly JObject key = JObject.Parse(File.ReadAllText("/Users/inwoo/Desktop/Coding/coinTrader/Key.json"));
-        private readonly string ConnectionKey = (string) key.GetValue("Connection Key");
-        private readonly string SecretKey = (string) key.GetValue("Secret Key");
-        private HttpClient client = new HttpClient {
+        private static readonly JObject key = JObject.Parse(File.ReadAllText("/Users/inwoo/Desktop/Coding/coinTrader/key.json"));
+        private readonly string ConnectionKey = (string) key["Connect Key"];
+        private readonly string SecretKey = (string) key["Secret Key"];
+        private readonly HttpClient client = new HttpClient {
             BaseAddress = new Uri("https://api.bithumb.com")
         };
+        private readonly Dictionary<string, JObject> apis = new Dictionary<string, JObject>();
         private void Trading() {
+            bool isIncresing = false;
+            double k = 0.5;
+            double targetPrice = double.MaxValue;
             while(state) {
-                DateTime time = DateTime.Now;
-                if(time.Hour == 9) {
-
-                }
                 // SampleOutput.Text = Sec_Connection("/info/balance", "currency=REN").ToString();
-                SampleOutput.Text = Pub_Connection("public/ticker/REN_KRW").ToString();
+                DateTime time = DateTime.Now;
+                if(time.Hour >= 9 || true) {
+                    if(!apis.ContainsKey("ticker")) {
+                        apis.Add("ticker", Pub_Connection("public/ticker/REN_KRW"));
+                        //target = 시작가 + (어제의 변동폭 * k)
+                        targetPrice = (double) apis["ticker"]["data"]["opening_price"]
+                            + ((double) apis["ticker"]["data"]["max_price"] - (double) apis["ticker"]["data"]["min_price"])
+                            * k;
+                    }
+                    if(isIncresing) {//상승중
+                        if(time.Hour == 21) {
+                            // sell
+                        }
+                    }
+                    else if(CurrencyPrice() > targetPrice) {
+                        isIncresing = true;
+                        // buy
+                    }
+                }
                 Thread.Sleep(1000);
             }
+        }
+
+        private double CurrencyPrice() {
+            if(!apis.ContainsKey("orderbook")) {
+                apis.Add("orderbook", Pub_Connection("public/orderbook/REN_KRW?count=1"));
+            }
+            return (double) apis["orderbook"]["data"]["bids"][0]["price"];
         }
 
         private JObject Pub_Connection(string path) {
@@ -85,12 +101,13 @@ namespace coinTrader {
             Response.EnsureSuccessStatusCode();
             return JObject.Parse(Response.Content.ReadAsStringAsync().Result);
         }
+
         private string ByteToString(byte[] rgbyBuff) {
-            StringBuilder sb = new StringBuilder();
+            string sHexStr = "";
             foreach(byte b in rgbyBuff) {
-                sb.Append(b.ToString("x2"));
+                sHexStr += b.ToString("x2");
             }
-            return sb.ToString();
+            return (sHexStr);
         }
         private long MicroSecTime() {
             DateTime DateTimeNow = DateTime.UtcNow;
@@ -102,7 +119,6 @@ namespace coinTrader {
             return (Convert.ToInt64(sNonce));
         }
         private string Hash_HMAC(string sKey, string sData) {
-            ByteToString(new HMACSHA512(Encoding.UTF8.GetBytes(sKey)).ComputeHash(Encoding.UTF8.GetBytes(sData)));
             byte[] rgbyKey = Encoding.UTF8.GetBytes(sKey);
             using(var hmacsha512 = new HMACSHA512(rgbyKey)) {
                 hmacsha512.ComputeHash(Encoding.UTF8.GetBytes(sData));
