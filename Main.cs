@@ -46,17 +46,8 @@ namespace coinTrader {
         private void Trading() {
             bool isIncresing = false;
             double k = 0.5;
-            float cnt2 = (float) Math.Round((double) Sec_Connection("/info/balance", "currency=REN")["data"]["total_ren"], 4);
-            if(cnt2 == 0) {
-                // 코인 없음 -> 금일 매수진행 안함
-                return;
-            }
-            SampleOutput.Text = Sec_Connection("/trade/market_sell", String.Format("units={0}&order_currency=REN&payment_currency=KRW", cnt2)).ToString();
-            return;
             while(state) {
                 try {
-
-                    SampleOutput.Text = Sec_Connection("/info/balance", "currency=REN").ToString();
                     DateTime time = DateTime.Now;
                     if(time.Hour >= 9 && time.Hour <= 21 || true) {
                         JObject ticker = Pub_Connection("public/ticker/REN_KRW");
@@ -74,9 +65,11 @@ namespace coinTrader {
                                 float cnt = (float) Math.Round((double) balance["data"]["total_ren"], 4);
                                 if(cnt == 0) {
                                     // 코인 없음 -> 금일 매수진행 안함
+                                    SampleOutput.AppendText(string.Format("금일 매수진행 안함, 목표가: {0}", targetPrice));
                                     continue;
                                 }
-                                Sec_Connection("/trade/market_sell", String.Format("units={0}&order_currency=REN&payment_currency=KRW", cnt));
+                                SampleOutput.AppendText(string.Format("판매가: {0} 개수: {1}", currencyPrice, cnt));
+                                Sec_Connection("/trade/market_sell", string.Format("units={0}&order_currency=REN&payment_currency=KRW", cnt));
                             }
                         }
                         else if(currencyPrice > targetPrice) {
@@ -87,7 +80,8 @@ namespace coinTrader {
                                 throw new Exception("잔고이슈");
                             }
                             //구매
-                            Sec_Connection("/trade/market_buy", String.Format("units={0}&order_currency=REN&payment_currency=KRW", cnt));
+                            SampleOutput.AppendText(string.Format("구매가: {0} 개수: {1}", currencyPrice, cnt));
+                            Sec_Connection("/trade/market_buy", string.Format("units={0}&order_currency=REN&payment_currency=KRW", cnt));
                         }
                     }
                     Thread.Sleep(1000 * 2);
