@@ -24,8 +24,7 @@ namespace coinTrader {
             FormBorderStyle = FormBorderStyle.Fixed3D;
             InitializeComponent();
             trad_Thread = new Thread(new ThreadStart(Trading));
-            // trad_Thread.Start();
-            
+            trad_Thread.Start();
         }
         private void Start_Click(object sender, EventArgs e) {
         }
@@ -44,41 +43,59 @@ namespace coinTrader {
         private readonly HttpClient client = new HttpClient {
             BaseAddress = new Uri("https://api.bithumb.com")
         };
-        private readonly Dictionary<string, JObject> apis = new Dictionary<string, JObject>();
         private void Trading() {
             bool isIncresing = false;
             double k = 0.5;
-            double targetPrice = double.MaxValue;
+            float cnt2 = (float) Math.Round((double) Sec_Connection("/info/balance", "currency=REN")["data"]["total_ren"], 4);
+            if(cnt2 == 0) {
+                // 코인 없음 -> 금일 매수진행 안함
+                return;
+            }
+            SampleOutput.Text = Sec_Connection("/trade/market_sell", String.Format("units={0}&order_currency=REN&payment_currency=KRW", cnt2)).ToString();
+            return;
             while(state) {
-                // SampleOutput.Text = Sec_Connection("/info/balance", "currency=REN").ToString();
-                DateTime time = DateTime.Now;
-                if(time.Hour >= 9 || true) {
-                    if(!apis.ContainsKey("ticker")) {
-                        apis.Add("ticker", Pub_Connection("public/ticker/REN_KRW"));
+                try {
+
+                    SampleOutput.Text = Sec_Connection("/info/balance", "currency=REN").ToString();
+                    DateTime time = DateTime.Now;
+                    if(time.Hour >= 9 && time.Hour <= 21 || true) {
+                        JObject ticker = Pub_Connection("public/ticker/REN_KRW");
+                        double currencyPrice = (double) Pub_Connection("public/orderbook/REN_KRW?count=1")["data"]["bids"][0]["price"];
+                        JObject balance = Sec_Connection("/info/balance", "currency=REN");
+
                         //target = 시작가 + (어제의 변동폭 * k)
-                        targetPrice = (double) apis["ticker"]["data"]["opening_price"]
-                            + ((double) apis["ticker"]["data"]["max_price"] - (double) apis["ticker"]["data"]["min_price"])
+                        double targetPrice = (double) ticker["data"]["opening_price"]
+                            + ((double) ticker["data"]["max_price"] - (double) ticker["data"]["min_price"])
                             * k;
-                    }
-                    if(isIncresing) {//상승중
-                        if(time.Hour == 21) {
-                            // sell
+
+                        if(isIncresing) {//상승중
+                            if(time.Hour == 21) {
+                                isIncresing = false;
+                                float cnt = (float) Math.Round((double) balance["data"]["total_ren"], 4);
+                                if(cnt == 0) {
+                                    // 코인 없음 -> 금일 매수진행 안함
+                                    continue;
+                                }
+                                Sec_Connection("/trade/market_sell", String.Format("units={0}&order_currency=REN&payment_currency=KRW", cnt));
+                            }
+                        }
+                        else if(currencyPrice > targetPrice) {
+                            isIncresing = true;
+                            double krw = (double) balance["data"]["total_krw"];
+                            float cnt = (float) Math.Round(krw / currencyPrice, 4);
+                            if(cnt == 0) {
+                                throw new Exception("잔고이슈");
+                            }
+                            //구매
+                            Sec_Connection("/trade/market_buy", String.Format("units={0}&order_currency=REN&payment_currency=KRW", cnt));
                         }
                     }
-                    else if(CurrencyPrice() > targetPrice) {
-                        isIncresing = true;
-                        // buy
-                    }
+                    Thread.Sleep(1000 * 2);
                 }
-                Thread.Sleep(1000);
+                catch(DivideByZeroException ex) {
+                    Thread.Sleep(1000 * 60);
+                }
             }
-        }
-
-        private double CurrencyPrice() {
-            if(!apis.ContainsKey("orderbook")) {
-                apis.Add("orderbook", Pub_Connection("public/orderbook/REN_KRW?count=1"));
-            }
-            return (double) apis["orderbook"]["data"]["bids"][0]["price"];
         }
 
         private JObject Pub_Connection(string path) {
