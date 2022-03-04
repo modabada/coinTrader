@@ -99,8 +99,14 @@ namespace coinTrader {
                     }
                     Thread.Sleep(1000 * 2);
                 }
-                catch(AggregateException e) {
-                    SampleOutput.AppendText(e.Message + "\n");
+                catch(Exception e) {
+                    StringBuilder output = new StringBuilder();
+                    for(int i = 0; i < 5; i++) {
+                        output.Append(" -> ");
+                        output.Append(e.Message);
+                        e = e.GetBaseException();
+                    }
+                    SampleOutput.AppendText(output.ToString());
                     Thread.Sleep(2 * 1000 * 60);
                 }
             }
