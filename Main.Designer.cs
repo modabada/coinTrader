@@ -41,6 +41,7 @@ namespace coinTrader {
         private void InitializeComponent() {
             this.backgroundWorker1 = new System.ComponentModel.BackgroundWorker();
             this.background = new System.Windows.Forms.Panel();
+            this.ResponseOutput = new System.Windows.Forms.TextBox();
             this.SampleOutput = new System.Windows.Forms.TextBox();
             this.Pause = new System.Windows.Forms.Button();
             this.Start = new System.Windows.Forms.Button();
@@ -51,6 +52,7 @@ namespace coinTrader {
             // 
             this.background.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(26)))), ((int)(((byte)(26)))), ((int)(((byte)(26)))));
             this.background.BackgroundImageLayout = System.Windows.Forms.ImageLayout.None;
+            this.background.Controls.Add(this.ResponseOutput);
             this.background.Controls.Add(this.SampleOutput);
             this.background.Controls.Add(this.Pause);
             this.background.Controls.Add(this.Start);
@@ -61,6 +63,16 @@ namespace coinTrader {
             this.background.Padding = new System.Windows.Forms.Padding(3);
             this.background.Size = new System.Drawing.Size(784, 462);
             this.background.TabIndex = 2;
+            // 
+            // ResponseOutput
+            // 
+            this.ResponseOutput.Location = new System.Drawing.Point(547, 270);
+            this.ResponseOutput.Multiline = true;
+            this.ResponseOutput.Name = "ResponseOutput";
+            this.ResponseOutput.ReadOnly = true;
+            this.ResponseOutput.Size = new System.Drawing.Size(231, 186);
+            this.ResponseOutput.TabIndex = 4;
+            this.ResponseOutput.TabStop = false;
             // 
             // SampleOutput
             // 
@@ -135,6 +147,7 @@ namespace coinTrader {
         private Button Start;
         private Button Pause;
         private TextBox SampleOutput;
+        private TextBox ResponseOutput;
     }
 }
 
