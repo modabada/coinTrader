@@ -99,7 +99,7 @@ namespace coinTrader {
                     }
                     Thread.Sleep(1000 * 2);
                 }
-                catch(HttpRequestException e) {
+                catch(AggregateException e) {
                     SampleOutput.AppendText(e.Message + "\n");
                     Thread.Sleep(2 * 1000 * 60);
                 }
