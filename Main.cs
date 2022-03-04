@@ -44,53 +44,64 @@ namespace coinTrader {
             BaseAddress = new Uri("https://api.bithumb.com")
         };
         private void Trading() {
-            bool isIncresing = false;
+            bool? isIncresing = null;
+            double targetPrice = double.MaxValue;
             double k = 0.5;
             while(state) {
                 try {
                     DateTime time = DateTime.Now;
-                    if(time.Hour >= 9 && time.Hour <= 21) {
-                        JObject ticker = Pub_Connection("public/ticker/REN_KRW");
-                        double currencyPrice = (double) Pub_Connection("public/orderbook/REN_KRW?count=1")["data"]["bids"][0]["price"];
-                        JObject balance = Sec_Connection("/info/balance", "currency=REN");
-
-                        //target = 시작가 + (어제의 변동폭 * k)
-                        double targetPrice = (double) ticker["data"]["opening_price"]
-                            + ((double) ticker["data"]["max_price"] - (double) ticker["data"]["min_price"])
-                            * k;
-
-                        if(isIncresing) {//상승중
-                            if(time.Hour == 21) {
-                                isIncresing = false;
-                                float cnt = (float) Math.Round((double) balance["data"]["total_ren"], 4);
-                                if(cnt == 0) {
-                                    // 코인 없음 -> 금일 매수진행 안함
-                                    SampleOutput.AppendText(string.Format("금일 매수진행 안함, 목표가: {0}\n", targetPrice));
-                                    continue;
-                                }
-                                SampleOutput.AppendText(string.Format("판매가: {0} 개수: {1}\n", currencyPrice, cnt));
-                                Sec_Connection("/trade/market_sell", string.Format("units={0}&order_currency=REN&payment_currency=KRW", cnt));
-                                while(DateTime.Now.Hour <= 22) {//delay
-                                }
-                            }
+                    JObject ticker = Pub_Connection("public/ticker/REN_KRW");
+                    double currencyPrice = (double) Pub_Connection("public/orderbook/REN_KRW?count=1")["data"]["bids"][0]["price"];
+                    JObject balance = Sec_Connection("/info/balance", "currency=REN");
+                    if(time.Hour < 9) {
+                        isIncresing = null;
+                    }
+                    else if(time.Hour <= 21) {
+                        if(isIncresing == null) {
+                            isIncresing = false;
+                            //target = 시작가 + (어제의 변동폭 * k)
+                            targetPrice = (double) ticker["data"]["opening_price"]
+                                + ((double) ticker["data"]["max_price"] - (double) ticker["data"]["min_price"])
+                                * k;
                         }
-                        else if(currencyPrice > targetPrice) {
+
+                        if(isIncresing == false && currencyPrice > targetPrice) {
                             isIncresing = true;
                             double krw = (double) balance["data"]["total_krw"];
-                            float cnt = (float) Math.Round(krw / currencyPrice, 4);
+                            float cnt = (float) Math.Floor(krw / currencyPrice * 1000) / 1000;
                             if(cnt == 0) {
                                 throw new Exception("잔고이슈");
                             }
                             //구매
-                            SampleOutput.AppendText(string.Format("구매가: {0} 개수: {1}\n", currencyPrice, cnt));
-                            Sec_Connection("/trade/market_buy", string.Format("units={0}&order_currency=REN&payment_currency=KRW", cnt));
+                            SampleOutput.AppendText(string.Format("목표가: {0}구매가: {1} 개수: {2}\n", targetPrice, currencyPrice, cnt));
+                            ResponseOutput.Text = Sec_Connection(
+                                "/trade/market_buy",
+                                string.Format("units={0}&order_currency=REN&payment_currency=KRW", cnt))
+                                .ToString();
+                        }
+                    }
+                    else {
+                        if(isIncresing != null) {
+                            float cnt = (float) Math.Floor((double) balance["data"]["total_ren"] * 1000) / 1000;
+                            if(isIncresing == true && cnt != 0) {
+                                SampleOutput.AppendText(string.Format("판매가: {0} 개수: {1}\n", currencyPrice, cnt));
+                                ResponseOutput.Text = Sec_Connection(
+                                    "/trade/market_sell",
+                                    string.Format("units={0}&order_currency=REN&payment_currency=KRW", cnt))
+                                    .ToString();
+                            }
+                            else {
+                                // 코인 없음 -> 금일 매수진행 안함
+                                SampleOutput.AppendText(string.Format("금일 매수진행 안함, 목표가: {0}\n", targetPrice));
+                            }
+                            isIncresing = null;
                         }
                     }
                     Thread.Sleep(1000 * 2);
                 }
                 catch(HttpRequestException e) {
-                    Thread.Sleep(1000 * 60);
-                    SampleOutput.AppendText(e.ToString());
+                    SampleOutput.AppendText(e.Message + "\n");
+                    Thread.Sleep(2 * 1000 * 60);
                 }
             }
         }
